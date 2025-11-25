@@ -3,8 +3,8 @@
 This package is a minimal scaffolding so you can `import openff_agent`.
 """
 
-from .core import greet, VERSION
+from .core import *
 
 __all__ = ["greet", "VERSION"]
 
-__version__ = VERSION
+__version__ = 11111
