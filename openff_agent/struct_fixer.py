@@ -11,17 +11,7 @@ from pdbfixer import PDBFixer
 # ---------------------------
 def load_structure(file_path: Path | str) -> PDBFixer:
     file_path = Path(file_path)
-    suffix = file_path.suffix.lower()
-
-    if suffix == ".pdb":
-        fixer = PDBFixer(filename=str(file_path))
-
-    elif suffix in (".cif", ".mmcif"):
-        cif = PDBxFile(str(file_path))
-        fixer = PDBFixer(topology=cif.topology, positions=cif.positions)
-
-    else:
-        raise ValueError("Unsupported file format: must be .pdb or .cif")
+    fixer = PDBFixer(filename=str(file_path))
 
     return fixer
 
