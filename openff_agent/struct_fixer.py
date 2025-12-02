@@ -1,78 +1,30 @@
-import os
-from pathlib import Path
-from openff.toolkit import Molecule, Topology, ForceField
-from openmm.app import PDBFile, PDBxFile, Modeller, ForceField
-import os
-from pdbfixer import PDBFixer
+unfixed_pdb_path = '/eagle/projects/FoundEpidem/xlian/Agent/OpenffAgent/tmp/ptm/pred.model_idx_0.cif'
+fixed_pdb_path = '/eagle/projects/FoundEpidem/xlian/Agent/OpenffAgent/tmp/ptm/pred.model_idx_0_fixed.pdb'
 
+kpi_smiles_path = '/eagle/projects/FoundEpidem/xlian/Agent/OpenffAgent/tmp/noptm_H_add_KPI_smiles.txt'
 
-# ---------------------------
-# 1. Load structure (CIF or PDB)
-# ---------------------------
-def load_structure(file_path: Path | str) -> PDBFixer:
-    file_path = Path(file_path)
-    fixer = PDBFixer(filename=str(file_path))
+from openff.toolkit import Molecule
+from openmm.app import PDBFile
+from rdkit import Chem
+import openff_agent.utils as utils
 
-    return fixer
+# get smiles from txt
+# TODO: implement codes to do rxn and get SMILES
 
+smiles = open(kpi_smiles_path, 'r').read()
 
-# ---------------------------
-# 2. Fix missing residues & atoms
-# ---------------------------
-def fix_structure(fixer: PDBFixer) -> PDBFixer:
-    fixer.findMissingResidues()
-    fixer.findMissingAtoms()
-    fixer.addMissingAtoms()
-    return fixer
+print('number of atoms in smiles: ')
+print(len(Chem.AddHs(Chem.MolFromSmiles(smiles)).GetAtoms()))
 
+utils.fix_pdb(unfixed_pdb_path, fixed_pdb_path, resid_to_rm_atom={'126': ['HO1', 'H2']})
+pdb = PDBFile(fixed_pdb_path)
 
-# ---------------------------
-# 3. Add hydrogens based on pH
-# ---------------------------
-def add_hydrogens(fixer: PDBFixer, ph: float = 7.4):
-    modeller = Modeller(fixer.topology, fixer.positions)
-    forcefield = ForceField("amber14-all.xml", "amber14/tip3pfb.xml")
+num_atoms = sum(1 for _ in pdb.topology.atoms())
+print("number of atoms in PDB:", num_atoms)
 
-    modeller.addHydrogens(forcefield, pH=ph)
-    return modeller.topology, modeller.positions
+mol_withKPI_from_smiles = Molecule.from_pdb_and_smiles(fixed_pdb_path, smiles, allow_undefined_stereo=True)
+print(f"✅ Loaded molecule with from_pdb_and_smiles()")
 
+# diff protein_with_KPI.pdb /eagle/projects/FoundEpidem/xlian/bio_ai_agent_genslm_example/energy_minim/openff_test/input/2v82_protein_with_H.pdb > diff.diff
 
-# ---------------------------
-# 4. Save structure as PDB or CIF
-# ---------------------------
-def save_structure(topology, positions, out_path: Path | str):
-    out_path = Path(out_path)
-
-    if out_path.suffix.lower() == ".pdb":
-        with open(out_path, "w") as f:
-            PDBFile.writeFile(topology, positions, f, keepIds=True)
-
-    elif out_path.suffix.lower() == ".cif":
-        with open(out_path, "w") as f:
-            PDBxFile.writeFile(topology, positions, f)
-
-    else:
-        raise ValueError("Output must be .pdb or .cif")
-
-    print(f"💾 Saved: {out_path}")
-
-
-# ---------------------------
-# 5. Main orchestrator (decoupled)
-# ---------------------------
-def prepare_structure(
-    in_file: Path | str,
-    out_file: Path | str,
-    ph: float = 7.4,
-):
-    """
-    Load → fix → protonate → save
-    """
-
-    fixer = load_structure(in_file)
-    fixer = fix_structure(fixer)
-
-    topology, positions = add_hydrogens(fixer, ph=ph)
-    save_structure(topology, positions, out_file)
-
-    return Path(out_file)
+# can load after removing H2 and HO1 from KPI

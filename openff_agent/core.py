@@ -31,5 +31,4 @@ for tag, fasta_file in fasta_jobs.items():
     #from openff_agent.utils import cif2pdb
     #cif2pdb(str(chai_output))
 
-# from openff_agent.struct_fixer import prepare_structure
 #prepare_structure(chai_output_pdb, chai_output.with_name(chai_output.stem + "_H.pdb"), ph=7.4)
