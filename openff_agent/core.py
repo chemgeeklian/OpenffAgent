@@ -1,5 +1,7 @@
 from pathlib import Path
 
+# TODO: make fasta w/PTM from sequence, position to PTM, and ligand SMILES
+
 # input files
 seq_noptm_fasta_file = Path("../data/chai_fasta_noptm.fasta")
 seq_ptm_fasta_file   = Path("../data/chai_fasta_WT_ptm_e4p.fasta")
