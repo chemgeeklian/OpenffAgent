@@ -2,15 +2,15 @@ from pathlib import Path
 
 # input files
 seq_noptm_fasta_file = Path("../data/chai_fasta_noptm.fasta")
-seq_ptm_fasta_file   = Path("../data/chai_fasta_ptm.fasta")
+seq_ptm_fasta_file   = Path("../data/chai_fasta_WT_ptm_e4p.fasta")
 
 # base output folder
 base_output = Path("../tmp")
 
 # we want to process both
 fasta_jobs = {
-    "noptm": seq_noptm_fasta_file,
-    "ptm":   seq_ptm_fasta_file,
+    "ptm_WT_lig": seq_ptm_fasta_file,
+    #"ptm":   seq_ptm_fasta_file,
 }
 
 for tag, fasta_file in fasta_jobs.items():
@@ -27,8 +27,5 @@ for tag, fasta_file in fasta_jobs.items():
         constraint=None,
         fold_algo="chai-esm",
     )
-
-    #from openff_agent.utils import cif2pdb
-    #cif2pdb(str(chai_output))
 
 #prepare_structure(chai_output_pdb, chai_output.with_name(chai_output.stem + "_H.pdb"), ph=7.4)

@@ -60,13 +60,22 @@ def fix_pdb(pdb_file: str, output_file: str=None, resid_to_rm_atom: dict=None, c
     print(f"Fixed PDB file {pdb_file} → {output_file}")
 
 
+def split_pdb(pdb_file:str, ):
+    # split pdb by chains
+    pdb = PDBFile(pdb_file)
+    for chain in pdb.topology.chains():
+        chain_id = chain.id
+        output_file = pdb_file.replace(".pdb", f"_chain{chain_id}.pdb")
+        atoms_to_keep = [
+            atom for atom in pdb.topology.atoms()
+            if atom.residue.chain.id == chain_id
+        ]
+        modeller = Modeller(pdb.topology, pdb.positions)
+        modeller.delete([atom for atom in pdb.topology.atoms() if atom not in atoms_to_keep])
+        with open(output_file, 'w') as f:
+            PDBFile.writeFile(modeller.topology, modeller.positions, f, keepIds=True)
+        print(f"Extracted chain {chain_id} to {output_file}")
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("cif_file", type=str, help="input CIF file")
-    parser.add_argument("pdb_file", type=str, nargs="?", help="output PDB file (optional)")
-    args = parser.parse_args()
-
-    cif_file = args.cif_file
-    pdb_file = args.pdb_file if args.pdb_file else cif_file.replace(".cif", ".pdb")
-
-    cif2pdb(cif_file, pdb_file)
+    split_pdb('/eagle/projects/FoundEpidem/xlian/Agent/OpenffAgent/tmp/ptm_lig/pred.model_idx_0_fixed.pdb')
