@@ -1,13 +1,22 @@
-from pdbfixer import PDBFixer
-from openmm.app import PDBFile, PDBxFile, Modeller, ForceField
-from openff.toolkit import Molecule, Topology
-from rdkit import Chem
+'''
+Generate force field for modified amino acids.
+This only needs to run once to get FF for the modified AA...
 
+Steps:
+1. From predicted PTM structure, apply reaction to get products.
+2. Find target product.
+3. Generate force field for target product.
+'''
 
-import importlib 
 import openff_agent.utils
-importlib.reload(openff_agent.utils)
+import openff
 
+from rdkit import Chem
+from rdkit.Chem import rdChemReactions
+from chemper.mol_toolkits import mol_toolkit
+from chemper.graphs.single_graph import SingleGraph
+from openff.toolkit import Molecule, Topology, ForceField
+from openff.units import unit
 
 def find_target_product(
     products,
@@ -15,16 +24,16 @@ def find_target_product(
     tag_smiles: str = "C(=O)[O-]",
 ):
     """
-    在 reaction 结果 products 里：
-    - 对每个 rdmol 施加一个“肽键切割 + 端基封盖”反应
-    - 在切出来的 capped 残基里找到：
-        - 指定残基号 resid_number
-        - 且 SMILES 中包含 tag_smiles 的那个 capped AA
+    In the reaction products:
+    - apply a "peptide bond cleavage + terminal capping" reaction to each rdmol
+    - find the capped AA that:
+        - has the specified residue number resid_number
+        - and has the tag_smiles in its SMILES
 
-    返回:
+    Returns:
       (full_product_mol, capped_aa_mol, residue_number, chain_id)
     """
-    rxn = Chem.rdChemReactions.ReactionFromSmarts(
+    rxn = rdChemReactions.ReactionFromSmarts(
         "[C](=[O])[N:3]([H:4])[C:5][C:6](=[O:7])[N]"
         " >> "
         "[CH3]C(=O)[N:3]([H:4])[C:5][C:6](=[O:7])N([H])[CH3]"
@@ -57,17 +66,18 @@ def find_target_product(
     )
 
 
-def get_offmol(
+def get_capped_ncaa_offmol(
     capped_aa: Chem.Mol,
     residue_number: int,
     chain_id: str,
 ) -> Molecule:
     """
-    把 RDKit 的 capped AA 转成 OFFMol，并：
+    translate above
+    Convert the RDKit capped AA to an OpenFF Molecule, and:
     - sanitize
     - generate conformers
-    - 识别 ACE / NME cap，并在对应原子上打 residue metadata
-    - 添加默认层级（chain / residue 等）
+    - identify ACE / NME caps and tag them with residue metadata
+    - add default hierarchy (chain / residue etc.)
     """
 
     # 1. Sanitize RDKit mol
@@ -76,16 +86,14 @@ def get_offmol(
     # 2. RDKit Mol -> OpenFF Molecule
     offmol = Molecule.from_rdkit(
         capped_aa,
-        allow_undefined_stereo=True,  # 你那边立体化学有坑，先放宽
+        allow_undefined_stereo=True,
     )
 
-    # 3. 生成构象（OpenFF 需要 3D 坐标时会用）
     offmol.generate_conformers()
 
-    # 4. 给 ACE / NME 端基打 residue metadata
+    # Assign residue metadata for ACE / NME caps
     _annotate_caps_with_metadata(offmol, residue_number, chain_id)
 
-    # 5. 添加默认层级信息（chain / residue 层次）
     offmol.add_default_hierarchy_schemes()
 
     return offmol
@@ -125,7 +133,9 @@ def _annotate_caps_with_metadata(
                     atom.metadata["insertion_code"] = " "
 
 
-def make_ptm_smiles(noptm_pdb, ptm_smiles, smarts_rxn, output_folder):
+def make_ptm_products(noptm_pdb, 
+                      ptm_smiles: str, 
+                      smarts_rxn: rdChemReactions.ChemicalReaction):
     if '.cif' in noptm_pdb:
         noptm_pred_pdb_fixed = noptm_pdb.replace(".cif", "_fixed.pdb")
     elif '.pdb' in noptm_pdb:
@@ -147,21 +157,97 @@ def make_ptm_smiles(noptm_pdb, ptm_smiles, smarts_rxn, output_folder):
 
     print("Number of products:", len(products))
 
+    return products
+
     
-def build_ptm_ff():
-    pass
+def build_ptm_ff(ncaa_capped: Molecule,
+                 output_path):
+    ncaa_capped.assign_partial_charges('am1bcc') # conda install -y -c conda-forge ambertools !!!
+    sage_ff14sb = ForceField('openff-2.0.0.offxml', 'ff14sb_off_impropers_0.0.3.offxml')
+
+    ncaa_uncapped_indices = []
+    for res in ncaa_capped.residues:
+        if res.residue_name not in ["ACE", "NME"]:
+            ncaa_uncapped_indices += [atom.molecule_atom_index for atom in res.atoms]
+
+    formal_charge = 0. * unit.elementary_charge
+    total_partial_charges = 0. * unit.elementary_charge
+
+    for i in ncaa_uncapped_indices:
+        atom = ncaa_capped.atoms[i]
+        formal_charge += atom.formal_charge
+        total_partial_charges += atom.partial_charge
+        
+    charge_offset = (formal_charge - total_partial_charges) / len(ncaa_uncapped_indices)
+
+    mol = mol_toolkit.Mol(ncaa_capped.to_rdkit())
+    graph = SingleGraph(mol, ncaa_uncapped_indices, layers=1)
+    charges_smirks = graph.as_smirks()
+
+    charges = [None for i in ncaa_uncapped_indices]
+
+    # Chemper's `SingleGraph` class produces smirks index `:1` corresponding to `ncaa_uncapped_indices[0]`,
+    # so we can iterate over the indices, put the appropriate charge in place, and apply the offset we 
+    # calculated earlier
+    for smirks_atom_index, molecule_atom_index in enumerate(ncaa_uncapped_indices, start=1):
+        charges[smirks_atom_index-1] = ncaa_capped.partial_charges[molecule_atom_index] + charge_offset
+        
+    # Make sure we haven't doubly assigned any charges
+    assert None not in charges
+
+    # Delete any charges we might've put in the last time we ran this cell
+    try:
+        del sage_ff14sb['LibraryCharges'].parameters[charges_smirks]
+    except openff.toolkit.utils.exceptions.ParameterLookupError:
+        pass
+
+    # Add the new charges to the library with the ChemPer SMIRKS
+    sage_ff14sb['LibraryCharges'].add_parameter({'smirks': charges_smirks,  'charge': charges})
+    sage_ff14sb.to_file(output_path)
+
+
+def write_smiles(mol, output_path):
+    """
+    Write the SMILES of an RDKit or OpenFF molecule to a file.
+    High cohesion, low coupling.
+    """
+    # RDKit Mol
+    if hasattr(mol, "GetAtoms"):
+        rdkit_mol = mol  
+    # OpenFF Mol → convert to RDKit
+    elif hasattr(mol, "to_rdkit"):
+        rdkit_mol = mol.to_rdkit()
+    else:
+        raise TypeError("Input must be RDKit Mol or OpenFF Molecule")
+
+    Chem.SanitizeMol(rdkit_mol)
+    smiles = Chem.MolToSmiles(rdkit_mol)
+
+    output_path = Path(output_path)
+    output_path.write_text(smiles)
+
+    print(f"SMILES written to {output_path}")
+    return smiles
 
 
 if __name__ == "__main__":
 
-    noptm_pdb = "/eagle/projects/FoundEpidem/xlian/Agent/OpenffAgent/tmp/noptm/pred.model_idx_0.cif"
+    noptm_pdb = "../tmp/noptm/pred.model_idx_0.cif"
     ptm_smiles = 'CC(=O)C(=O)[O-]'
-    smarts_rxn = Chem.rdChemReactions.ReactionFromSmarts(
-        '[C:3][C:4][C:5][C:6][N;+1:1]([H:7])([H:8])[H:9].C[C:2](=O)C(=O)[O-]' # 给赖氨酸侧链的碳也编上号
+    smarts_rxn = rdChemReactions.ReactionFromSmarts(
+        '[C:3][C:4][C:5][C:6][N;+1:1]([H:7])([H:8])[H:9].C[C:2](=O)C(=O)[O-]'
         '>>'
         '[C:3][C:4][C:5][C:6][N;+0:1]=[C:2](C([H:7])([H:8])[H:9])(C(=O)[O-])'
     )
-    output_folder = "../tmp/"
+    output_folder = "../output"
 
-    make_ptm_smiles(noptm_pdb, ptm_smiles, smarts_rxn, output_folder)
+    products = make_ptm_products(noptm_pdb, ptm_smiles, smarts_rxn)
 
+    full_product_rdmol, capped_aa_rdmol, resid_number, chain_id = find_target_product(
+        products,
+        resid_number=126,
+        tag_smiles="C(=O)[O-]",
+    )
+
+    ncaa_capped = get_capped_ncaa_offmol(capped_aa_rdmol, resid_number, chain_id)
+    build_ptm_ff(ncaa_capped, output_folder + "KPI.offxml")
