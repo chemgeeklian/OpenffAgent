@@ -1,19 +1,19 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-def dock(target_lig_coord_pdb: str, smiles: str, output_pdb: str):
+def dock(target_lig_coord_pdb: str, smiles: str, output_sdf: str):
     """
     Superpose ligand generated from SMILES onto an existing ligand pose stored in a PDB file.
     target_lig_coord_pdb: PDB containing ONLY the ligand coordinates in binding pose.
     """
-    print(f"[INFO] Loading reference pose: {target_lig_coord_pdb}")
+    print(f"Loading reference pose: {target_lig_coord_pdb}")
     ref = Chem.MolFromPDBFile(target_lig_coord_pdb, sanitize=False, removeHs=False)
     if ref is None:
         raise ValueError("Failed to read reference ligand PDB.")
 
     ref = Chem.AddHs(ref, addCoords=True)
 
-    print(f"[INFO] Generating new ligand from SMILES: {smiles}")
+    print(f"Generating new ligand from SMILES: {smiles}")
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         raise ValueError(f"Invalid SMILES: {smiles}")
@@ -50,19 +50,21 @@ def dock(target_lig_coord_pdb: str, smiles: str, output_pdb: str):
     # ------------------------------------------
     # Alignment
     # ------------------------------------------
-    print("[INFO] Aligning new ligand to reference pose...")
+    print("Aligning new ligand to reference pose...")
     AllChem.AlignMol(mol, ref, atomMap=list(zip(match, ref_idx)))
 
     # ------------------------------------------
     # Write output
     # ------------------------------------------
-    Chem.MolToPDBFile(mol, output_pdb)
-    print(f"[INFO] Docked ligand written to: {output_pdb}")
+    w = Chem.SDWriter(output_sdf)
+    w.write(mol)
+    w.close()
+    print(f"Docked ligand written to: {output_sdf}")
 
 
 if __name__ == "__main__":
     # Example usage
     target_lig_coord_pdb = "../tmp/ptm_lig/pred.model_idx_0_fixed_chainB.pdb"
     smiles = "O=C[C@H](O)[C@H](O)COP(=O)([O-])[O-]"
-    output_pdb = "../tmp/ptm_lig/e4p_docked.pdb"
-    dock(target_lig_coord_pdb, smiles, output_pdb)
+    output_sdf = "../tmp/ptm_lig/e4p_docked.sdf"
+    dock(target_lig_coord_pdb, smiles, output_sdf)

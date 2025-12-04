@@ -48,4 +48,7 @@ mol_withKPI_from_smiles = Molecule.from_pdb_and_smiles(splited_enzyme_pdb_path,
 print(f"✅ Loaded molecule with from_pdb_and_smiles()")
 
 
+utils.write_smiles(full_product_rdmol, '../tmp/ptm_product.smiles')
+print("write smiles done.")
+
 # can load after removing H2 and HO1 from KPI
