@@ -62,7 +62,7 @@ def dock(target_lig_coord_pdb: str, smiles: str, output_pdb: str):
 
 if __name__ == "__main__":
     # Example usage
-    target_lig_coord_pdb = "/eagle/projects/FoundEpidem/xlian/Agent/OpenffAgent/tmp/ptm_lig/pred.model_idx_0_fixed_chainB.pdb"
+    target_lig_coord_pdb = "../tmp/ptm_lig/pred.model_idx_0_fixed_chainB.pdb"
     smiles = "O=C[C@H](O)[C@H](O)COP(=O)([O-])[O-]"
-    output_pdb = "/eagle/projects/FoundEpidem/xlian/Agent/OpenffAgent/tmp/ptm_lig/e4p_docked.pdb"
+    output_pdb = "../tmp/ptm_lig/e4p_docked.pdb"
     dock(target_lig_coord_pdb, smiles, output_pdb)
