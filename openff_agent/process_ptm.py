@@ -206,30 +206,6 @@ def build_ptm_ff(ncaa_capped: Molecule,
     sage_ff14sb.to_file(output_path)
 
 
-def write_smiles(mol, output_path):
-    """
-    Write the SMILES of an RDKit or OpenFF molecule to a file.
-    High cohesion, low coupling.
-    """
-    # RDKit Mol
-    if hasattr(mol, "GetAtoms"):
-        rdkit_mol = mol  
-    # OpenFF Mol → convert to RDKit
-    elif hasattr(mol, "to_rdkit"):
-        rdkit_mol = mol.to_rdkit()
-    else:
-        raise TypeError("Input must be RDKit Mol or OpenFF Molecule")
-
-    Chem.SanitizeMol(rdkit_mol)
-    smiles = Chem.MolToSmiles(rdkit_mol)
-
-    output_path = Path(output_path)
-    output_path.write_text(smiles)
-
-    print(f"SMILES written to {output_path}")
-    return smiles
-
-
 if __name__ == "__main__":
 
     noptm_pdb = "../tmp/noptm/pred.model_idx_0.cif"
@@ -239,7 +215,7 @@ if __name__ == "__main__":
         '>>'
         '[C:3][C:4][C:5][C:6][N;+0:1]=[C:2](C([H:7])([H:8])[H:9])(C(=O)[O-])'
     )
-    output_folder = "../output"
+    output_folder = "../output/"
 
     products = make_ptm_products(noptm_pdb, ptm_smiles, smarts_rxn)
 

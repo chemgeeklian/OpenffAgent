@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-import argparse
+from pathlib import Path
+from rdkit import Chem
 import gemmi
 from pdbfixer import PDBFixer
 from openmm.app import PDBFile, Modeller
+from openff.toolkit import Molecule
 
 
 def cif2pdb(cif_file: str, pdb_file: str=None):
@@ -75,6 +77,30 @@ def split_pdb(pdb_file:str, ):
         with open(output_file, 'w') as f:
             PDBFile.writeFile(modeller.topology, modeller.positions, f, keepIds=True)
         print(f"Extracted chain {chain_id} to {output_file}")
+
+
+def write_smiles(mol, output_path):
+    """
+    Write the SMILES of an RDKit or OpenFF molecule to a file.
+    High cohesion, low coupling.
+    """
+    # RDKit Mol
+    if hasattr(mol, "GetAtoms"):
+        rdkit_mol = mol  
+    # OpenFF Mol → convert to RDKit
+    elif hasattr(mol, "to_rdkit"):
+        rdkit_mol = mol.to_rdkit()
+    else:
+        raise TypeError("Input must be RDKit Mol or OpenFF Molecule")
+
+    Chem.SanitizeMol(rdkit_mol)
+    smiles = Chem.MolToSmiles(rdkit_mol)
+
+    output_path = Path(output_path)
+    output_path.write_text(smiles)
+
+    print(f"SMILES written to {output_path}")
+    return smiles
 
 
 if __name__ == "__main__":
