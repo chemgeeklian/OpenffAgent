@@ -226,5 +226,6 @@ print("Cl-", n_cl)
 sage_ff14sb = ForceField( "../output/KPI.offxml")
 interchange = sage_ff14sb.create_interchange(top)
 
-interchange.to_inpcrd("../tmp/out.inpcrd")
-interchange.to_prmtop("../tmp/out.prmtop")
+interchange.to_inpcrd("../md_test/run/system.inpcrd")
+interchange.to_prmtop("../md_test/run/system.prmtop")
+interchange.to_pdb("../md_test/run/system.pdb")
