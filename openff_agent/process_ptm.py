@@ -163,7 +163,8 @@ def make_ptm_products(noptm_pdb,
 def build_ptm_ff(ncaa_capped: Molecule,
                  output_path):
     ncaa_capped.assign_partial_charges('am1bcc') # conda install -y -c conda-forge ambertools !!!
-    sage_ff14sb = ForceField('openff-2.0.0.offxml', 'ff14sb_off_impropers_0.0.3.offxml')
+    # sage_ff14sb = ForceField('openff-2.0.0.offxml', 'ff14sb_off_impropers_0.0.3.offxml')
+    sage_ff14sb = ForceField("openff-2.2.0.offxml", "ff14sb_off_impropers_0.0.4.offxml")
 
     ncaa_uncapped_indices = []
     for res in ncaa_capped.residues:
@@ -227,3 +228,5 @@ if __name__ == "__main__":
 
     ncaa_capped = get_capped_ncaa_offmol(capped_aa_rdmol, resid_number, chain_id)
     build_ptm_ff(ncaa_capped, output_folder + "KPI.offxml")
+
+    print("Finished generating PTM force field.")
