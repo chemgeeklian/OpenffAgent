@@ -86,11 +86,15 @@ def _solvate_pdbfixer(
         openmm.app.PDBFile.writeFile(topology, positions, _file)
 
     pdb_object = pdbfixer.PDBFixer("_tmp.pdb")
-    os.remove("_tmp.pdb")
-
     pdb_object.addSolvent(**kwargs)
 
-    return pdb_object.topology, pdb_object.positions
+    modeller = openmm.app.Modeller(pdb_object.topology, pdb_object.positions)
+
+    # remove 3 CL-, gross!
+    cl_residues = [r for r in modeller.topology.atoms() if r.name == 'Cl']
+    modeller.delete(cl_residues[:3])
+
+    return modeller.topology, modeller.positions
 
 
 def _solvate_openmm(
@@ -229,3 +233,15 @@ interchange = sage_ff14sb.create_interchange(top)
 interchange.to_inpcrd("../md_test/run/system.inpcrd")
 interchange.to_prmtop("../md_test/run/system.prmtop")
 interchange.to_pdb("../md_test/run/system.pdb")
+
+
+system_intrcg = Interchange.from_smirnoff(
+    force_field=sage_ff14sb,
+    topology=top,
+)
+
+import os
+os.mkdir("../md_test/offinterchange")
+system_intrcg.to_inpcrd("../md_test/offinterchange/system.inpcrd")
+system_intrcg.to_prmtop("../md_test/offinterchange/system.prmtop")
+system_intrcg.to_pdb("../md_test/offinterchange/system.pdb")

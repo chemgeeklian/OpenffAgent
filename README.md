@@ -35,5 +35,9 @@ source /lus/flare/projects/FoundEpidem/xlian/envs/agent3/bin/activate
 ```
 
 `/lus/flare/projects/FoundEpidem/xlian/envs/agent3/` is the python 3.10 venv to run openmm
+
 If `agent3` is broken, `rm -rf agent3` and `cp -r agent_bkup agent3`
+
+`agent_bkup` only contains aurora openmm...
+
 `conda activate agent` activates `/home/xlian/.conda/envs/agent` to run openff...
