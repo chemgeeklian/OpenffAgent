@@ -9,8 +9,10 @@ pip install -e .
 
 order of running scripts for now...
 
-1. core.py
-2. struct_fixer.py
+```sh
+python core.py # run chai
+python struct_fixer.py
+```
 
 build openff force field for PTM (KPI here). Only need to run once for each PTM structure: 
 
@@ -22,7 +24,7 @@ docked ligand anf solvate the protein+ptm_ligand system!
 
 ```sh
 python dock_ligand.py
-python solvate.py
+python solvate.py # solvate and energy minimize
 ```
 
 
