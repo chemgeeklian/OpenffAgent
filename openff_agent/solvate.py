@@ -87,6 +87,7 @@ def _solvate_pdbfixer(
 
     pdb_object = pdbfixer.PDBFixer("_tmp.pdb")
     pdb_object.addSolvent(**kwargs)
+    os.remove("_tmp.pdb")
 
     modeller = openmm.app.Modeller(pdb_object.topology, pdb_object.positions)
 
