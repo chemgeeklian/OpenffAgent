@@ -8,7 +8,7 @@ from parsl import python_app
 # --------------------------------------------------
 # Inputs
 # --------------------------------------------------
-run_dir = Path('run/')
+run_dir = Path('matt_ref/')
 paths = [run_dir]
 
 # Safety checks

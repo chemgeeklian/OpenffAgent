@@ -184,9 +184,11 @@ def insert_molecule_and_remove_clashes(
     return new_top
 
 
-ligand_path = "../tmp/ptm_lig/e4p_docked.sdf"
-pdb_path = '../tmp/ptm_lig/pred.model_idx_0_fixed_chainA.pdb'
-kpi_smiles_path = '../tmp/ptm_product.smiles'
+TMP_DIR = "../tmp"   # <-- 单独抽出来
+
+ligand_path = f"{TMP_DIR}/ptm_lig/e4p_docked.sdf"
+pdb_path = f"{TMP_DIR}/ptm_lig/pred.model_idx_0_fixed_chainA.pdb"
+kpi_smiles_path = f"{TMP_DIR}/ptm_product.smiles"
 
 # Load a molecule from a SDF file
 ligand = Molecule.from_file(ligand_path)
@@ -227,26 +229,14 @@ n_cl = sum(1 for atom in top.atoms if atom.symbol.upper() == "CL")
 print("Na+", n_na)
 print("Cl-", n_cl)
 
+with open(f"{TMP_DIR}/solvated_topology.json", "w") as f:
+    print(top.to_json(), file=f)
 
+print('wrote to json.')
+
+'''
 sage_ff14sb = ForceField( "../output/KPI.offxml")
 interchange = sage_ff14sb.create_interchange(top)
-'''
-interchange.to_inpcrd("../md_test/run/system.inpcrd")
-interchange.to_prmtop("../md_test/run/system.prmtop")
-interchange.to_pdb("../md_test/run/system.pdb")
-
-
-system_intrcg = Interchange.from_smirnoff(
-    force_field=sage_ff14sb,
-    topology=top,
-)
-
-import os
-os.mkdir("../md_test/offinterchange")
-system_intrcg.to_inpcrd("../md_test/offinterchange/system.inpcrd")
-system_intrcg.to_prmtop("../md_test/offinterchange/system.prmtop")
-system_intrcg.to_pdb("../md_test/offinterchange/system.pdb")
-'''
 
 import time
 # Length of the simulation.
@@ -271,31 +261,6 @@ openmm_positions = interchange.positions.to_openmm()
 
 simulation.context.setVelocitiesToTemperature(temperature)
 simulation.context.setPositions(openmm_positions)
-
-'''
-pdb_reporter = openmm.app.PDBReporter("trajectory.pdb", trj_freq)
-state_data_reporter = openmm.app.StateDataReporter(
-    "data.csv",
-    data_freq,
-    step=True,
-    potentialEnergy=True,
-    temperature=True,
-    density=True,
-)
-simulation.reporters.append(pdb_reporter)
-simulation.reporters.append(state_data_reporter)
-
-print("Starting simulation")
-start = time.process_time()
-
-# Run the simulation
-simulation.step(num_steps)
-
-end = time.process_time()
-print(f"Elapsed time {end - start} seconds")
-print("Done!")
-'''
-
 simulation.minimizeEnergy()
 
 state = simulation.context.getState(getPositions=True)
@@ -304,3 +269,4 @@ min_positions = state.getPositions()
 # Write PDB
 with open("minimized.pdb", "w") as f:
     PDBFile.writeFile(openmm_topology, min_positions, f)
+'''

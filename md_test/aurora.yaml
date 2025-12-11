@@ -1,0 +1,7 @@
+name: 'aurora'
+num_nodes: 1
+worker_init: 'module load frameworks; conda activate deepdrive; cd /flare/projects/FoundEpidem/msinclair/ideals/nsd3/sims/domains'
+scheduler_options: '#PBS -l filesystems=flare'
+account: 'FoundEpidem'
+queue: 'prod'
+walltime: '6:00:00'
