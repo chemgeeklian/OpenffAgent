@@ -1,3 +1,4 @@
+import argparse
 from openmm.app import *
 from openmm import *
 from openmm.unit import *
@@ -7,13 +8,19 @@ from copy import deepcopy
 from pathlib import Path
 from openff.toolkit import ForceField, Topology
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-# File paths
-topology_json = "../tmp/solvated_topology.json"
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--tmp_dir", type=str, required=True,
+                        help="Path to temporary working directory.")
+    return parser.parse_args()
+
+args = parse_args()
+TMP_DIR = Path(args.tmp_dir)
+
+topology_json = TMP_DIR / "solvated_topology.json"
 forcefield_file = "../output/KPI.offxml"
-output_dir = Path("./run")
+output_dir = TMP_DIR / "run"
 output_dir.mkdir(exist_ok=True)
 
 # Simulation parameters
@@ -168,25 +175,28 @@ eq_integrator = LangevinMiddleIntegrator(
     equil_dt * picoseconds
 )
 
+platform = Platform.getPlatformByName('CUDA')
+
 eq_simulation = Simulation(
     openmm_topology,
     restrained_system,
-    eq_integrator
+    eq_integrator,
+    platform=platform
 )
 
 # Set positions and minimize energy
 print("\nMinimizing energy...")
 eq_simulation.context.setPositions(openmm_positions)
-initial_state = eq_simulation.context.getState(getEnergy=True)
+initial_state = eq_simulation.context.getState(getEnergy=True, getPositions=True)
 print(f"Initial potential energy: {initial_state.getPotentialEnergy()}")
 
 eq_simulation.minimizeEnergy()
 
-minimized_state = eq_simulation.context.getState(getEnergy=True)
+minimized_state = eq_simulation.context.getState(getEnergy=True, getPositions=True)
 print(f"Minimized potential energy: {minimized_state.getPotentialEnergy()}")
 
-# save run/minimized.pdb
-with open("run/minimized.pdb", "w") as f:
+# save minimized
+with open(f"{output_dir}/minimized.pdb", "w") as f:
     PDBFile.writeFile(openmm_topology, minimized_state.getPositions(), f)
 
 # Add reporters
@@ -264,7 +274,8 @@ prod_integrator = LangevinMiddleIntegrator(
 prod_simulation = Simulation(
     openmm_topology,
     prod_system,
-    prod_integrator
+    prod_integrator,
+    platform=platform
 )
 
 # Load checkpoint from equilibration
