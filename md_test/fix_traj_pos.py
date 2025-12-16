@@ -1,6 +1,15 @@
 import mdtraj as md
 import numpy as np
 
+'''
+This script recenters a molecular dynamics trajectory on the protein's center of mass (COM).
+It performs the following steps:
+1) Loads the trajectory and topology.
+2) Images the molecules to account for periodic boundary conditions.
+3) Recenters each frame on the protein's COM.
+4) Saves the modified trajectory and a PDB of the first frame.
+'''
+
 pdb = "../tmp/minimized.pdb"
 dcd = "../md_test/run/eq.dcd"
 output_dcd_path = "../md_test/run/eq_centered.dcd"

@@ -210,3 +210,4 @@ data/
 *tmp/
 logs/
 *.logs
+plots/
