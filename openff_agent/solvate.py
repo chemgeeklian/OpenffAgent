@@ -184,7 +184,7 @@ def insert_molecule_and_remove_clashes(
     return new_top
 
 
-TMP_DIR = "../tmp"   # <-- 单独抽出来
+TMP_DIR = "../wt_tmp"
 
 ligand_path = f"{TMP_DIR}/ptm_lig/e4p_docked.sdf"
 pdb_path = f"{TMP_DIR}/ptm_lig/pred.model_idx_0_fixed_chainA.pdb"
@@ -233,40 +233,3 @@ with open(f"{TMP_DIR}/solvated_topology.json", "w") as f:
     print(top.to_json(), file=f)
 
 print('wrote to json.')
-
-'''
-sage_ff14sb = ForceField( "../output/KPI.offxml")
-interchange = sage_ff14sb.create_interchange(top)
-
-import time
-# Length of the simulation.
-num_steps = 1000  # number of integration steps to run
-
-# Logging options.
-trj_freq = 10  # number of steps per written trajectory frame
-data_freq = 10  # number of steps per written simulation statistics
-
-# Integration options
-time_step = 2 * openmm.unit.femtoseconds  # simulation timestep
-temperature = 300 * openmm.unit.kelvin  # simulation temperature
-friction = 1 / openmm.unit.picosecond  # friction constant
-
-integrator = openmm.LangevinMiddleIntegrator(temperature, friction, time_step)
-
-simulation = interchange.to_openmm_simulation(integrator=integrator)
-
-openmm_system = interchange.to_openmm()
-openmm_topology = interchange.to_openmm_topology()
-openmm_positions = interchange.positions.to_openmm()
-
-simulation.context.setVelocitiesToTemperature(temperature)
-simulation.context.setPositions(openmm_positions)
-simulation.minimizeEnergy()
-
-state = simulation.context.getState(getPositions=True)
-min_positions = state.getPositions()
-
-# Write PDB
-with open("minimized.pdb", "w") as f:
-    PDBFile.writeFile(openmm_topology, min_positions, f)
-'''

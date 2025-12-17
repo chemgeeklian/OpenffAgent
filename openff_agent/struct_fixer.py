@@ -1,5 +1,7 @@
-ptm_pdb_path = '../tmp/ptm_lig/pred.model_idx_0.cif'
-noptm_pdb_path = "../tmp/noptm/pred.model_idx_0.cif"
+TMP_DIR = "../tmp"
+
+ptm_pdb_path = f'{TMP_DIR}/ptm_lig/pred.model_idx_0.cif'
+noptm_pdb_path = f'{TMP_DIR}/noptm/pred.model_idx_0.cif'
 
 from openff.toolkit import Molecule
 from openmm.app import PDBFile
@@ -26,7 +28,8 @@ smarts_rxn = rdChemReactions.ReactionFromSmarts(
     '[C:3][C:4][C:5][C:6][N;+1:1]([H:7])([H:8])[H:9].C[C:2](=O)C(=O)[O-]'
     '>>'
     '[C:3][C:4][C:5][C:6][N;+0:1]=[C:2](C([H:7])([H:8])[H:9])(C(=O)[O-])'
-)
+) # RXNMapper could help this process so we don't need to manually write these stuff!!!!!!!!!
+# Using RXNMapper to identify the reaction center
 
 products = make_ptm_products(noptm_pdb_path, ptm_smiles, smarts_rxn)
 

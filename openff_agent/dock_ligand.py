@@ -63,8 +63,9 @@ def dock(target_lig_coord_pdb: str, smiles: str, output_sdf: str):
 
 
 if __name__ == "__main__":
-    # Example usage
-    target_lig_coord_pdb = "../tmp/ptm_lig/pred.model_idx_0_fixed_chainB.pdb"
+    TMP_DIR = "../wt_tmp"
+    
+    target_lig_coord_pdb = f"{TMP_DIR}/ptm_lig/pred.model_idx_0_fixed_chainB.pdb"
     smiles = "O=C[C@H](O)[C@H](O)COP(=O)([O-])[O-]"
-    output_sdf = "../tmp/ptm_lig/e4p_docked.sdf"
+    output_sdf = f"{TMP_DIR}/ptm_lig/e4p_docked.sdf"
     dock(target_lig_coord_pdb, smiles, output_sdf)

@@ -1,5 +1,10 @@
 #!/bin/bash -l
-# Run `sim_test.py` multiple times for two systems and post-process distances.
+#PBS -l select=1:system=polaris
+#PBS -l walltime=4:00:00
+#PBS -q preemptable
+#PBS -A FoundEpidem
+#PBS -l filesystems=home:eagle
+#PBS -N offsim
 
 module load conda
 
@@ -22,28 +27,66 @@ mkdir -p "$WT_BASE" "$EC03_BASE"
 
 echo "Starting simulation repeats: $REPEATS per system"
 
-run_one() {
-	local src_topology=$1
-	local dest_run_dir=$2
-
-	mkdir -p "$dest_run_dir"
-	# sim_test expects a topology file at TMP_DIR/solvated_topology.json
-	cp "$src_topology" "$dest_run_dir/solvated_topology.json"
-
-	echo "Running sim_test.py with tmp_dir=$dest_run_dir"
-	python sim_test.py --tmp_dir "$dest_run_dir" &> "$dest_run_dir/sim_test.log"
+# Detect GPUs: use CUDA_VISIBLE_DEVICES if set, otherwise query nvidia-smi
+detect_gpus() {
+    local arr=()
+    if [ -n "$CUDA_VISIBLE_DEVICES" ]; then
+        IFS=',' read -ra tmp <<< "$CUDA_VISIBLE_DEVICES"
+        for t in "${tmp[@]}"; do
+            # trim whitespace
+            t=$(echo "$t" | xargs)
+            [ -n "$t" ] && arr+=("$t")
+        done
+    else
+        if command -v nvidia-smi >/dev/null 2>&1; then
+            while IFS= read -r idx; do
+                arr+=("$idx")
+            done < <(nvidia-smi --query-gpu=index --format=csv,noheader,nounits 2>/dev/null)
+        fi
+    fi
+    if [ ${#arr[@]} -eq 0 ]; then
+        echo "No GPUs detected; falling back to GPU 0 (may run on CPU)"
+        arr=(0)
+    fi
+    echo "${arr[@]}"
 }
 
-# Run repeats sequentially (safe and predictable)
-for i in $(seq 1 $REPEATS); do
-	echo "== WT repetition $i =="
-	run_one "$WT_SRC" "$WT_BASE/run_$i"
-done
+GPUS=($(detect_gpus))
+NGPU=${#GPUS[@]}
+echo "Using GPUs: ${GPUS[*]} (NGPU=$NGPU)"
 
+run_one() {
+    local src_topology=$1
+    local dest_run_dir=$2
+    local gpu_id=$3
+
+    mkdir -p "$dest_run_dir"
+    cp "$src_topology" "$dest_run_dir/solvated_topology.json"
+
+    echo "Running sim_test.py in $dest_run_dir on GPU $gpu_id"
+    CUDA_VISIBLE_DEVICES=$gpu_id \
+    python sim_test.py --tmp_dir "$dest_run_dir" &> "$dest_run_dir/sim_test.log"
+}
+
+echo "Starting WT runs"
+job=0
 for i in $(seq 1 $REPEATS); do
-	echo "== EC03_1 repetition $i =="
-	run_one "$EC03_SRC" "$EC03_BASE/run_$i"
+    gpu=${GPUS[$((job % NGPU))]}
+    run_one "$WT_SRC" "$WT_BASE/run_$i" "$gpu" &
+    job=$((job+1))
+    (( job % NGPU == 0 )) && wait
 done
+wait
+
+echo "Starting EC03_1 runs"
+job=0
+for i in $(seq 1 $REPEATS); do
+    gpu=${GPUS[$((job % NGPU))]}
+    run_one "$EC03_SRC" "$EC03_BASE/run_$i" "$gpu" &
+    job=$((job+1))
+    (( job % NGPU == 0 )) && wait
+done
+wait
 
 echo "All simulations finished. Running distance post-processing..."
 
