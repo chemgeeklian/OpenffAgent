@@ -4,10 +4,13 @@ for fasta processing
 conda install bioconda::cd-hit
 ```
 
-install openff stuff
+# install openff stuff
 
+make a new conda env
 ```
-cd openff_agent
+conda create -n agent python=3.12
+conda activate agent
+
 conda install -c conda-forge pip 'python>=3.12' 'openff-toolkit-base>=0.17.1' rustworkx rdkit openmm pyxdg gemmi nglview
 conda install -c conda-forge MDAnalysisTests ipywidgets pdbfixer chemper ambertools # ambertool is needed to add partial charge to PTM
 conda install openff-interchange -c conda-forge # required by solvation
